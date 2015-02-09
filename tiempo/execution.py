@@ -10,6 +10,7 @@ import chalk
 import json
 import pytz
 import traceback
+import os
 
 
 from cStringIO import StringIO
@@ -50,22 +51,17 @@ class CaptureStdOut(list):
         super(CaptureStdOut, self).__init__(*args, **kwargs)
 
     def __enter__(self):
-        if settings.DEBUG:
-            return self
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()
         return self
 
     def __exit__(self, *args):
-        if settings.DEBUG:
-            return
-
         self.extend(self._stringio.getvalue().splitlines())
         sys.stdout = self._stdout
 
     def finished(self, timestamp=None):
         if settings.DEBUG:
-            return
+            print self
 
         self.timestamp = timestamp
         if not timestamp:
@@ -173,7 +169,7 @@ class ThreadManager(object):
         """
 
         now = utc_now()
-        tomorrow = now + datetime.timedelta(days=1)
+        # tomorrow = now + datetime.timedelta(days=1)
 
         time_tasks = get_task_keys(TASK_GROUPS)
 
@@ -286,14 +282,11 @@ if THREAD_COUNT:
 def auto_load_tasks():
     for app in settings.PROJECT_APPS:
         module = importlib.import_module(app)
-        try:
+        filename = os.path.join(module.__path__[0], 'tasks.py')
+        if os.path.isfile(filename):
             importlib.import_module(app + '.tasks')
-            chalk.blue('imported tasks from %s' % app)
-        except ImportError as e:
-            # print traceback.format_exc()
-            pass
-    if settings.DEBUG:
-        pass
-        # import tasks
+            chalk.blue(app.upper() + ': imported tasks from %s' % app)
+        else:
+            chalk.yellow(app + ' does not have a tasks module.')
 
 auto_load_tasks()
