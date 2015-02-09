@@ -1,6 +1,6 @@
 
 from datetime import datetime
-from .execution import REDIS, RECENT_KEY
+from tiempo.execution import REDIS, RECENT_KEY
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render

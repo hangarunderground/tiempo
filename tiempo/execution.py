@@ -1,9 +1,15 @@
-from django.conf import settings
+
+from . import TIEMPO_REGISTRY, RECENT_KEY
+from .task import Task
+from .conn import REDIS
+from .conf import INTERVAL, THREAD_COUNT, TASK_GROUPS, RESULT_LIFESPAN, DEBUG
+from .exceptions import ResponseError
+
 from twisted.internet import threads, task
-
 from dateutil.relativedelta import relativedelta
+from cStringIO import StringIO
+from logging import getLogger
 
-import importlib
 import datetime
 import sys
 import chalk
@@ -12,28 +18,7 @@ import pytz
 import traceback
 
 
-from cStringIO import StringIO
-
-from logging import getLogger
 logger = getLogger(__name__)
-
-import redis
-REDIS = redis.StrictRedis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_QUEUE_DB,
-    password=settings.REDIS_PW
-)
-
-from . import TIEMPO_REGISTRY, RECENT_KEY
-
-from .task import Task
-
-
-INTERVAL = getattr(settings, 'TIEMPO_INTERVAL', 5)
-THREAD_COUNT = getattr(settings, 'TIEMPO_THREADS', 1)
-TASK_GROUPS = ['ALL'] + getattr(settings, 'TIEMPO_GROUPS', [])
-RESULT_LIFESPAN = getattr(settings, 'TIEMPO_RESULT_LIFESPAN_DAYS', 1)
 
 
 def utc_now():
@@ -50,21 +35,21 @@ class CaptureStdOut(list):
         super(CaptureStdOut, self).__init__(*args, **kwargs)
 
     def __enter__(self):
-        if settings.DEBUG:
+        if DEBUG:
             return self
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()
         return self
 
     def __exit__(self, *args):
-        if settings.DEBUG:
+        if DEBUG:
             return
 
         self.extend(self._stringio.getvalue().splitlines())
         sys.stdout = self._stdout
 
     def finished(self, timestamp=None):
-        if settings.DEBUG:
+        if DEBUG:
             return
 
         self.timestamp = timestamp
@@ -229,7 +214,7 @@ class ThreadManager(object):
 
                         logger.debug('next will be: %r', expire_key)
 
-                except redis.exceptions.ResponseError as e:
+                except ResponseError as e:
                     print e
                 except BaseException as e:
                     print e
@@ -271,29 +256,13 @@ def run_task(task, thread):
     thread.active_task = False
 
 
-if THREAD_COUNT:
-    chalk.green('current time: %r' % utc_now())
-    chalk.green(
-        'Found %d thread(s) specified in settings.TIEMPO_THREADS' %
-        THREAD_COUNT
-    )
+def thread_init():
+    if THREAD_COUNT:
+        chalk.green('current time: %r' % utc_now())
+        chalk.green(
+            'Found %d thread(s) specified by TIEMPO_THREADS' % THREAD_COUNT
+        )
 
-    for i in range(0, THREAD_COUNT):
-        tm = ThreadManager(i)
-        tm.start()
-
-
-def auto_load_tasks():
-    for app in settings.PROJECT_APPS:
-        module = importlib.import_module(app)
-        try:
-            importlib.import_module(app + '.tasks')
-            chalk.blue('imported tasks from %s' % app)
-        except ImportError as e:
-            # print traceback.format_exc()
-            pass
-    if settings.DEBUG:
-        pass
-        # import tasks
-
-auto_load_tasks()
+        for i in range(0, THREAD_COUNT):
+            tm = ThreadManager(i)
+            tm.start()

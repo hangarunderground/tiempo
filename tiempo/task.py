@@ -1,31 +1,27 @@
+
+try:
+    from django.utils.encoding import force_bytes
+except ImportError:
+    from .utils import force_bytes
+
+try:
+    from six.moves import cPickle as pickle
+except ImportError:
+    import pickle
+
+from . import TIEMPO_REGISTRY
+from .conn import REDIS
+
+from logging import getLogger
+
 import inspect
 import uuid
 import base64
 import importlib
 import functools
 
-try:
-    from django.utils.six.moves import cPickle as pickle
-except ImportError:
-    import pickle
 
-from . import TIEMPO_REGISTRY
-
-from django.utils.encoding import force_bytes
-from django.core.exceptions import ImproperlyConfigured
-from django.conf import settings
-
-from logging import getLogger
 logger = getLogger(__name__)
-
-import redis
-
-REDIS = redis.StrictRedis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_QUEUE_DB,
-    password=settings.REDIS_PW
-)
 
 
 class TaskBase(object):
@@ -53,6 +49,9 @@ class TaskBase(object):
 
         except Exception:
             raise
+            # ValueError, SuspiciousOperation, unpickling exceptions. If any of
+            # these happen, just return an empty dictionary (an empty session).
+            return {}
 
     @staticmethod
     def rehydrate(base_64):
@@ -96,7 +95,6 @@ class Task(TaskBase):
         # we only want this to happen if this is being called
         # as a decorator, otherwise all "calls" are performed as
         # special functions ie. "now" or "soon" etc.
-        
         if args and hasattr(args[0], '__call__'):
             self.func = args[0]
             self.cache = {}
@@ -110,9 +108,7 @@ class Task(TaskBase):
         return self
 
     def _freeze(self, *args, **kwargs):
-        """
-            formats all the info needed to run or pickle this task.
-        """
+
         self.data = {
             'function_module_path': inspect.getmodule(self.func).__name__,
             'function_name': self.func.__name__,
@@ -126,9 +122,6 @@ class Task(TaskBase):
         return self.data
 
     def _thaw(self, data=None):
-        """
-           just assigns all frozen variables to the instance
-        """
         if not data and hasattr(self, 'data'):
             data = self.data
 
@@ -137,9 +130,6 @@ class Task(TaskBase):
                 setattr(self, key, val)
 
     def _get_function(self):
-        """
-            gets the function that needs to be run to execute this task
-        """
         if hasattr(self, 'func'):
             return self.func
 
@@ -154,11 +144,8 @@ class Task(TaskBase):
         return obj
 
     def _enqueue(self):
-        """
-            pushes this task, encoded, to redis so it can be executed by a worker thread
-        """
         if not self.frozen:
-            raise ImproperlyConfigured(
+            raise ValueError(
                 'need to freeze this task before enqueuing'
             )
 
@@ -167,11 +154,6 @@ class Task(TaskBase):
         return self.data['uid']
 
     def get_schedule(self):
-        """
-           returns something that looks like 4.*.* or *.*.4
-           the 1st would mean run every hour, every minute if it is the 4th day of the month.
-           the 2nd would mean run the 4th minute of every hour, every day
-        """
         if self.periodic:
             sched = [
                 '*',

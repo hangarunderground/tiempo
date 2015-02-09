@@ -1,5 +1,6 @@
 twisted
-redis-py
+redis
 django
-dateutil
-chalk
+python-dateutil
+pychalk
+jinja2
