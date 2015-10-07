@@ -96,21 +96,22 @@
                         }
                     }
                     else {
-                        var myString = '';
-                        var remains = 0;
+                        var timeStr = '';
                         secs = Math.round(secs);
                         if (secs > 360){
                             var hours = Math.floor(secs / 360)
-                            myString += ' ' + pluralizer(hours, 'hour');
+                            timeStr += ' ' + pluralizer(hours, 'hour');
                             secs = secs - (hours*360);
                         }
                         if (secs > 60){
-                          var minutes = Math.floor(secs / 60);
-                          myString += ' '+pluralizer(minutes, 'minute');
-                          secs = secs - (minutes*60);
+                            var minutes = Math.floor(secs / 60);
+                            timeStr += ' '+pluralizer(minutes, 'minute');
+                            secs = secs - (minutes*60);
                         }
-                        myString += ' '+pluralizer(secs, 'second');
-                        return myString;
+                        if(secs > 0){
+                            timeStr += ' '+pluralizer(secs, 'second');
+                        }
+                        return timeStr;
                     }
                 };
             });
