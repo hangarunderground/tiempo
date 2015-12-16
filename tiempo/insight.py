@@ -1,29 +1,26 @@
 from collections import OrderedDict
+from redis.exceptions import ResponseError
 from tiempo.conn import REDIS
 import json
 
 
-def completed_jobs(include_errors=True,
-                   include_successes=True):
+def completed_jobs():
 
-    jobs = {}
-    if include_errors:
-        errors = REDIS.hgetall('errors')
-        jobs.update(errors)
+    keys = REDIS.keys('results*')
+    pipe = REDIS.pipeline()
+    for key in keys:
+        pipe.hgetall(key)
 
-    if include_successes:
-        successes = REDIS.hgetall('successes')
-        jobs.update(successes)
+    try:
+        jobs_list = [job for job in pipe.execute()]
+    except ResponseError:
+        # TODO: Announce that one of the result keys didn't point to a hash and that we don't know what to do about it.
+        raise
 
-    jobs_list = []
-    for uid, job_dict_string in jobs.items():
-        job_dict = json.loads(job_dict_string)
+    uids = [key.split(":", 1)[1] for key in keys]
+    jobs_and_keys_list = zip(uids, jobs_list)
+    jobs_and_keys_list.sort(key=lambda job: job[1]['finish_time'])
 
-        jobs_list.append(
-            (uid, job_dict)
-        )
-    jobs_list.sort(key=lambda job: job[1]['finish_time'])
-
-    completed_jobs_dict = OrderedDict(jobs_list)
+    completed_jobs_dict = OrderedDict(jobs_and_keys_list)
 
     return completed_jobs_dict

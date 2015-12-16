@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from .contrib.django.utils import six
+from tiempo.contrib.django.utils import six
 
 from tiempo.conf import TASK_PATHS
 
@@ -144,3 +144,4 @@ def all_jobs(groups):
         name = namespace(group)
         jobs_dict[group] = REDIS.lrange(name, 0, -1)
     return jobs_dict
+

@@ -1,0 +1,3 @@
+Since tiempo uses the Twisted reactor for scheduling, it makes good sense to use the Twisted [Trial](https://twistedmatrix.com/documents/current/core/howto/testing.html) tool for testing.  As always then using Trial, it's important when testing tiempo applications to remember to "leave the reactor" as you found it.
+ 
+ In this case, that means cleaning the RUNNERS and TIEMPO_REGISTRY singletons in tiempo.__init__.  Otherwise, you risk running subsequent tests with a polluted state.

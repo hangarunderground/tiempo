@@ -1,15 +1,17 @@
+from tiempo import RECENT_KEY
+
 from dateutil.relativedelta import relativedelta
-from tiempo import RUNNERS, RECENT_KEY
-from tiempo.announce import Announcer
-from tiempo.conf import RESULT_LIFESPAN
-from tiempo.utils import utc_now, namespace, task_time_keys
 from hendrix.contrib.async.messaging import hxdispatcher
-from twisted.internet import task
+
+from tiempo.announce import Announcer
+from tiempo.conf import RESULT_LIFESPAN, SCHEDULE_AHEAD_MINUTES, MAX_SCHEDULE_AHEAD_JOBS
+from tiempo.utils import utc_now, namespace, task_time_keys
+
 
 try:
     from django.utils.encoding import force_bytes
 except ImportError:
-    from .utils import force_bytes
+    from tiempo.utils import force_bytes
 
 try:
     from six.moves import cPickle as pickle
@@ -22,7 +24,6 @@ from .conn import REDIS
 
 import inspect
 import uuid
-import base64
 import importlib
 import functools
 import datetime
@@ -36,14 +37,14 @@ WORDS = open(word_file).read().splitlines()
 
 
 def announce_tasks_to_client():
-        '''
-        Push the list of tasks to the client.
-        '''
-        task_dict = {}
+    '''
+    Push the list of tasks to the client.
+    '''
+    task_dict = {}
 
-        for task in TIEMPO_REGISTRY.values():
-            task_dict[task.key] = task.serialize_to_dict()
-        hxdispatcher.send('all_tasks', {"tasks": task_dict})
+    for task in TIEMPO_REGISTRY.values():
+        task_dict[task.key] = task.serialize_to_dict()
+    hxdispatcher.send('all_tasks', {"tasks": task_dict})
 
 
 class Job(object):
@@ -66,6 +67,8 @@ class Job(object):
             self.code_word = task.code_word
             self.status = 'waiting'
             self.enqueued = False
+
+        self.announcer = Announcer()
 
     def __str__(self):
         return "Job: %s / %s - (Task: %s, %s)" % (
@@ -263,6 +266,14 @@ starting at %(start)s"""%data
 
 
 class Trabajo(object):
+    '''
+    espanol for task, and used interchangably with that word through Tiempo.
+
+    This is the center of Tiempo's work model.
+
+    A task is a callable and a set of scheduling logic that determines
+    when and how to enqueue and run that callable.
+    '''
 
     def __repr__(self):
         return self.key
@@ -270,18 +281,19 @@ class Trabajo(object):
     def __init__(self,
                  report_to=None,
                  announcer_name=None,
+                 max_schedule_ahead=None,
                  *args, **kwargs):
 
+        self.max_schedule_ahead = max_schedule_ahead or MAX_SCHEDULE_AHEAD_JOBS
         self.report_handler = report_to
 
         self.announcer_name = announcer_name
-
-        self.announcer = Announcer()
 
         self.day = None
         self.hour = None
         self.minute = None
         self.periodic = False
+        self.force_interval = None
         self.current_job = None  # TODO: Push this knowledge down into the backend
 
         self.uid = str(uuid.uuid4())
@@ -337,9 +349,11 @@ class Trabajo(object):
         return self.code_word
 
     def serialize_to_dict(self):
-        next_run_time = self.next_expiration_dt()
+        next_run_time = self.datetime_of_subsequent_run()
         if next_run_time:
             next_run_time = next_run_time.isoformat()
+        else:
+            next_run_time = "Unscheduled."
 
         task_as_dict = {
             'codeWord': self.code_word,
@@ -358,10 +372,7 @@ class Trabajo(object):
         kwargs = getattr(self, 'kwargs_to_function', {})
 
         if self.announcer_name:
-            kwargs[self.announcer_name] = self.announcer
-
-            if runner:
-                self.announcer.runner = runner
+            kwargs[self.announcer_name] = runner.announcer
 
         result = func(
                 *getattr(self, 'args_to_function', ()),
@@ -405,6 +416,16 @@ class Trabajo(object):
         else:
             print "could not find function", self.func
 
+    def is_planned(self):
+        '''
+        TODO: Account for dependent tasks and tasks that have recently
+        had their 'soon()' method called.
+        '''
+        if not self.force_interval and not self.periodic:
+            return False
+        else:
+            return True
+
     def get_schedule(self):
         if self.periodic:
             sched = [
@@ -425,7 +446,7 @@ class Trabajo(object):
         '''
         The next future datetime at which this trabajo's waiting period will expire.
         '''
-        if hasattr(self, 'force_interval'):
+        if self.force_interval:
             expiration_dt = utc_now() + datetime.timedelta(
                 seconds=self.force_interval
             )
@@ -436,11 +457,147 @@ class Trabajo(object):
 
         return expiration_dt
 
+    def runs_every_minute(self):
+        '''
+        A convenience method to determine whether a task
+        runs once per minute on schedule.
+        '''
+        return self.periodic and not(self.force_interval or self.minute or self.hour or self.day)
+
+    def delta_until_run_time(self, dt=None):
+        '''
+        Takes a datetime, which defaults to utc_now().
+
+        If this task is currently planned, returns a relativedelta from dt when it is eligible to be queued.
+
+        (e.g., if it's 3:51, and this Trabajo runs every hour at 20 after the hour, then this function will return relativedelta(hours=+1, minute=20), the duration from now until 4:20)
+
+        If not planned, returns None.
+
+        TODO: If task is currently enqueued, return some kind of ENQUEUED object.
+        '''
+        dt = dt or utc_now()
+
+        if self.is_planned():
+
+            if self.force_interval:
+                seconds = self.force_interval
+                last_run = REDIS.get(namespace("last_run:%s" % self.uid))
+                if not last_run:  # If we've never run before...
+                    return datetime.timedelta(seconds=seconds)
+                else:
+                    raise RuntimeError("Not implemented.")
+
+            # If this task runs every minute, we know that we need to simply add a minute to the dt to get the next runtime.
+            if self.runs_every_minute():
+                return relativedelta(minutes=+1)
+
+            r = relativedelta()
+
+            next_hour = False
+            next_day = False
+
+            if self.minute:
+                r += relativedelta(minute=self.minute)
+
+                # Read as "If the current minute is already past the minute of run time, we do this next hour."
+                next_hour = dt.minute >= self.minute
+
+            if self.hour:
+                r += relativedelta(hour=self.hour)
+
+                # Same as 'next hour' above, but for day.
+                if dt.hour >= self.hour:
+                    next_day = True
+            elif next_hour:
+                r += relativedelta(hours=+1)
+
+            if self.day:
+                r += relativedelta(day=self.day)
+                if dt.day >= self.day:
+                    r += relativedelta(months=+1)
+            elif next_day:
+                r += relativedelta(days=+1)
+
+            return r
+        else:
+            return None
+
+    def datetime_of_subsequent_run(self, dt=None):
+        """
+        Takes a datetime, which defaults to utc_now().
+
+        If this task is currently planned, returns the first time after dt when this task is eligible to be run.
+
+        Otherwise, returns None.
+        """
+        dt = dt or utc_now()
+        r = self.delta_until_run_time(dt)
+        if r is not None:
+            return dt + r
+
+    def check_schedule(self, window_begin=None, window_end=None):
+        '''
+        Takes a datetime, window_begin, which defaults to utc_now() without microseconds.
+        Takes a datetime, window_end, which default to one hour after dt.
+
+        Checks to see if this task can be enqueued at 1 or more times
+        between window_begin and window_end.
+
+        Returns a list of datetime objects at which scheduling this task is appropriate.
+        '''
+        window_begin = window_begin or utc_now().replace(microsecond=0)
+        window_end = window_end or window_begin + datetime.timedelta(minutes=SCHEDULE_AHEAD_MINUTES)
+
+        run_times = []
+
+        while True:
+            if len(run_times) >= self.max_schedule_ahead:
+                break
+
+            dt_of_next_run = self.datetime_of_subsequent_run(window_begin)
+
+            if dt_of_next_run:  # TODO: When is this False?
+                if dt_of_next_run < window_end:
+
+                    # This dt checks out.  Add it.
+                    run_times.append(dt_of_next_run)
+
+                    # To find a subsequent run, start searching at this time.
+                    window_begin = dt_of_next_run
+
+                else:
+                    break  # This dt is after the window_end.
+            else:
+                break  # There is no qualifying dt in this timeframe.  TODO: Test this.
+        return run_times
+
+    def currently_scheduled_keys(self):
+        '''
+        Returns the backend keys for currently scheduled future runs.
+        '''
+        pattern = namespace('scheduled:%s:*' % self.key)
+        keys = REDIS.keys(pattern)
+        return keys
+
+    def currently_scheduled_in_seconds(self):
+        '''
+        Returns a list of ints or longs, with each item being a number of seconds in the future at which this task will run.
+        '''
+        pipe = REDIS.pipeline()
+        for key in self.currently_scheduled_keys():
+            pipe.ttl(key)
+        seconds_list = pipe.execute()
+        seconds_list.sort()
+        return seconds_list
+
     def just_spawn_job(self, default_report_handler=None):
         # If this task has a report handler, use it.  Otherwise, use a default if one is passed.
         report_handler = self.report_handler or default_report_handler
 
-        job = Job(self)
+        # TODO: Implement report handler
+
+        job = Job(task=self)
         return job
 
     def spawn_job_and_run_soon(self,
@@ -475,7 +632,9 @@ class Trabajo(object):
     def soon(self, tiempo_wait_for=None,
              *args, **kwargs):
         '''
-        Just like spawn_job(), but returns self instead of the job.
+        Just like spawn_job_and_run_roon(), but returns self instead of the job.
+
+        Also takes argument "tiempo_wait_for" for backward compat.
         '''
 
         # If we are told to wait for another task, we'll put this in the appropriately named queue.

@@ -31,7 +31,8 @@ class EventsBroadCastTests(TestCase):
         REDIS.set('results:whatever', 'a large farva')
 
         try:
-            set_event = hear_from_backend()[1]
+            # Get the third event; the first two will be subscribe notices.
+            set_event = hear_from_backend()[2]
         except IndexError:
             self.fail("Didn't get more than one item from the backend.  Did you remember to enable the proper notifications?")
         key = set_event['channel'].split(':', 1)[1]

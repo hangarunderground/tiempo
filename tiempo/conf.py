@@ -25,6 +25,8 @@ if has_django and not LEAVE_DJANGO_UNSET:
     REDIS_QUEUE_DB = getattr(settings, 'REDIS_QUEUE_DB', None) or 7
     REDIS_TEST_DB = getattr(settings, 'REDIS_QUEUE_DB', None) or 13
     REDIS_PW = getattr(settings, 'REDIS_PW', None)
+    SCHEDULE_AHEAD_MINUTES = getattr(settings, 'SCHEDULE_AHEAD_MINUTES', 180)
+    MAX_SCHEDULE_AHEAD_JOBS = getattr(settings, 'MAX_SCHEDULE_AHEAD_JOBS', 100)
 else:
     INTERVAL = os.environ.get('TIEMPO_INTERVAL', 1)
     THREAD_CONFIG = os.environ.get('THREAD_CONFIG', [('1','2','3'),('1','2'),('1',)])
@@ -36,5 +38,7 @@ else:
     REDIS_QUEUE_DB = os.environ.get('TIEMPO_REDIS_QUEUE_DB', 12)
     REDIS_TEST_DB = os.environ.get('TIEMPO_REDIS_TEST_DB', 13)
     REDIS_PW = os.environ.get('TIEMPO_REDIS_PW', None)
+    SCHEDULE_AHEAD_MINUTES = os.environ.get('SCHEDULE_AHEAD_MINUTES', 180)
+    MAX_SCHEDULE_AHEAD_JOBS = os.environ.get('MAX_SCHEDULE_AHEAD_JOBS', 100)
 
 TASK_PATHS = json.loads(os.environ.get('TIEMPO_TASK_PATHS', '["tiempo.demo"]'))

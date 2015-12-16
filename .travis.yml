@@ -1,6 +1,8 @@
 language: python
 install:
-- pip install tox
+  - pip install tox
+  - pip install pyflakes
+  - pip install coveralls
 services:
   - redis-server
 notifications:
@@ -10,3 +12,6 @@ notifications:
     on_success: change
     on_failure: always
 script: tox
+
+after_success:
+  - coveralls

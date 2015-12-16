@@ -1,18 +1,15 @@
-from . import RECENT_KEY
-from tiempo import tiempo_loop
-from tiempo.work import Job
-from tiempo.runner import Runner
-from .conn import REDIS
-from .conf import INTERVAL, THREAD_CONFIG, RESULT_LIFESPAN, DEBUG
 from cStringIO import StringIO
-
 import sys
-import chalk
 import json
 
-from dateutil.relativedelta import relativedelta
-from tiempo.utils import utc_now
+import chalk
 from twisted.logger import Logger
+
+from tiempo import tiempo_loop
+from tiempo.runner import Runner
+from .conf import THREAD_CONFIG, DEBUG
+from tiempo.utils import utc_now
+
 logger = Logger()
 
 

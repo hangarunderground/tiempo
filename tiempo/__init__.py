@@ -1,6 +1,9 @@
 PROJECT_PATH = __path__[0]
 
 TIEMPO_REGISTRY = {}
+
+# RUNNERS here is used as a global singleton. By default, instances of
+# tiempo.runner.Runner add themselves as values for keys matching their groups.
 RUNNERS = {}
 
 def all_runners():

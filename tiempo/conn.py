@@ -15,6 +15,7 @@ NOTIFY_PUBSUB = REDIS.pubsub()
 def subscribe_to_backend_notifications(db=REDIS_QUEUE_DB):
     REDIS.config_set('notify-keyspace-events', 'KEA')
     NOTIFY_PUBSUB.psubscribe('__keyspace@%s__:results*' % db)
+    NOTIFY_PUBSUB.psubscribe('__keyevent@%s__:expired' % db)
 
 
 def hear_from_backend():

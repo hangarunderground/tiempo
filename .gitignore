@@ -57,3 +57,7 @@ venv
 .DS_Store
 ignore
 ignore.*
+
+.idea
+_trial_temp
+bower_components

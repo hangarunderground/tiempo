@@ -3,12 +3,13 @@ import random
 import time
 
 
-@Trabajo(periodic=True, force_interval=4, announcer_name="announcer")
-def llama(announcer):
+def sleep_blocker(announcer):
     upper_bound = random.choice(range(60, 120))
+    announcer.brief("Going to try to do %s things." % upper_bound)
+
     unlucky_number = random.choice(range(80, 160))
 
-    announcer.set_progress_increments(upper_bound)
+    announcer.set_progress_increments(upper_bound)  # TODO: Implement progress indicator.
 
     for n in range(0, upper_bound):
         announcer.report_progress(n)
@@ -16,12 +17,21 @@ def llama(announcer):
         if n == unlucky_number:
             raise RuntimeError("I am error.  Friend of bagu.  I hit unlucky number %s" % unlucky_number)
 
-    announcer.brief("Everything went OK - %s things happened.")
+    announcer.brief("Everything went OK - %s things happened." % upper_bound)
     announcer.detail("Avoided unlucky number %s" % unlucky_number)
     announcer.detail(LOREM_IPSUM)
 
     return
 
+
+@Trabajo(priority=1, periodic=True, announcer_name="announcer")
+def dingo(announcer):
+    sleep_blocker(announcer)
+
+
+@Trabajo(periodic=True, force_interval=10, announcer_name="announcer")
+def llama(announcer):
+    sleep_blocker(announcer)
 
 LOREM_IPSUM = """Lorizzle ipsum dolor hizzle amet, i'm in the shizzle adipiscing elit. Nullam sapien crackalackin, gangsta volutpizzle, suscipit quis, away vizzle, daahng dawg. Pellentesque gangster pizzle. Sed erizzle. Ass izzle we gonna chung dapibus i'm in the shizzle tempizzle uhuh ... yih!. Maurizzle gangsta nibh et turpis. Dizzle izzle tortor. Pellentesque away rhoncizzle pimpin'. In hac habitasse platea dizzle. Ass dapibizzle. Owned tellizzle sure, pretium gizzle, mattizzle sheezy, break yo neck, yall vitae, shizzle my nizzle crocodizzle. Boofron suscipizzle. Integer semper sheezy sizzle purus.
 
