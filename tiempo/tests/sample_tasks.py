@@ -1,5 +1,2 @@
-import chalk
-
-
-def some_callable():
-    chalk.red("This is some callable.")
+def some_callable(*args, **kwargs):
+    return args, kwargs

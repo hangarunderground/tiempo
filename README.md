@@ -1,5 +1,5 @@
 # tiempo
-Twisted Task Scheduling for Django
+A Procrastination Framework for Python
 
 
 ## Dev Setup

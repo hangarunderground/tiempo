@@ -3,43 +3,41 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Tiempo Kiosk</title>
+        <title>Reelio Tiempo Dashboard</title>
         <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/0.11.2/angular-material.min.css">
 
         <style type="text/css">
 
             .job.ng-animate {
-              background-color: #fff9d8;
+              background-color: teal;
             }
 
             #finishedJobs {
-              position: relative;
-              width:30%;
-              float: right;
+              position: absolute;
+              left: 0;
             }
 
             .error {
-              /*border: 1px solid red;*/
+              border: 2px solid red;
               margin-top: 10px;
-              padding: 8px;
               background-color: rgb(255, 233, 233);
             }
 
              .success {
-              /*border: 2px solid green;*/
+              border: 2px solid green;
               margin-top: 10px;
-              padding: 8px;
               background-color: #D5FFD1;
             }
 
             md-progress-circular {
-                position:relative;
+              height: 20px;
+              position: relative;
+              bottom: 10px;
             }
 
             #kioskRowAreas {
-              width:65%;
+              width:60%;
             }
-
 
             #organizationLogo {
                 width: 180px;
@@ -63,106 +61,22 @@
 
         <div ng-controller='TiempoController' layout-padding>
 
-            <md-list id="finishedJobs" class='md-whiteframe-z1'>
-                <div class="finishedJob" ng-repeat="(id, result) in tiempo.results | reverse |limitTo: 10" >
+            <md-list id="finishedJobs">
+                <div class="finishedJob" ng-repeat="(id, result) in tiempo.results | reverse" ng-click="result.showMore=!result.showMore">
                     <div ng-class="{'error': result.error_message, 'success': !result.error_message}" class="md-list-item-text" layout="column">
-                        <div flex="10"><strong>[{result.message}]</strong></div>
-                        <div><small>"[{result.codeWord}]"</small> - <span am-time-ago="result.finish_time"></span></div>
+                        <div flex="10">"[{result.codeWord}]" <strong>([{result.message}])</strong></div>
+                        <div>[{result.finish_time| amDateFormat:'MM.DD.YYYY HH:mm:ss'}]</div>
                         <div class="errorText">[{result.result}]</div>
+                        <div>[{(result.result_detail|json).length}] details</div>
+                        <div ng-if="result.showMore">
+                            <pre ng-repeat="detail in result.result_detail|json track by $index">
+                                [{detail}]
+                            </pre>
+                        </div>
                     </div>
                 </div>
             </md-list>
 
-            <div layout='row' id="kioskRowAreas">
-                <md-list flex='100' offset="5" class='md-whiteframe-z1'>
-
-                    <!-- Runners -->
-                    <h2 layout-padding>Running</h2>
-                    <md-list-item>
-                        <div flex='100' layout='row' layout-align='space-around center'>
-                            <div flex='10'>Runner</div>
-                            <div flex='20'>Job Code Name</div>
-                            <div flex='20'>Time</div>
-                            <div flex='40'>Activity</div>
-                            <div flex='10'></div>
-                        </div>
-                    </md-list-item>
-
-                    <div ng-repeat='(id, runner) in tiempo.runners'>
-
-                        <md-list-item running-alert="runner.jobUid" error-state="runner.error">
-                            <div flex='100'layout='row' layout-align='space-around center'>
-                                <div flex='10'>[{id}]</div>
-                                <div flex='20'>[{runner.codeWord}]</div>
-                                <div flex='20'>
-                                    <span am-time-ago="runner.start_time"></span>
-                                </div>
-                                <div flex='40'>[{runner.message}]</div>
-                                <div flex='10'>
-                                    <md-progress-circular md-diameter="24px" md-mode="indeterminate" value="[{runner.total_progress}]">
-                                    </md-progress-circular>
-                                </div>
-                            </div>
-                        </md-list-item>
-                        <md-divider></md-divider>
-                    </div>
-
-                    <!-- Queue -->
-                    <div>
-                        <h2 layout-padding>Job Queue</h2>
-
-                        <md-list-item>
-                            <div flex='100' layout='row' layout-align='space-around center'>
-                                <div flex='20'>Name</div>
-                                <div flex='40'>Task Path</div>
-                                <div flex='20'>Enqueued</div>
-                                <div flex='20'>Group</div>
-                            </div>
-                        </md-list-item>
-
-                        <div ng-repeat='(uid, job) in tiempo.jobs | jobsFilter' class="job" id="j[{uid}]">
-                            <md-divider></md-divider>
-                            <md-list-item>
-                                <div flex='100'layout='row' layout-align='space-around center'>
-                                    <div flex='20'>[{job.codeWord}]</div>
-                                    <div flex='40'>[{job.key}]</div>
-                                    <div flex='20'>
-                                        <span am-time-ago="job.enqueued"</span>
-                                    </div>
-                                    <div flex='20'>[{job.group}]</div>
-                                </div>
-                            </md-list-item>
-                        </div>
-                    </div>
-
-                    <!-- Tasks -->
-                    <h2 layout-padding>Tasks</h2>
-
-                    <md-list-item>
-                        <div flex='100' layout='row' layout-align='space-around center'>
-                            <div flex="20">Next Job</div>
-                            <div flex='30'>Task path</div>
-                            <div flex="30"></div>
-                            <div flex='20'>Next Run Time</div>
-                        </div>
-                    </md-list-item>
-
-                    <div ng-repeat='(id, task) in tiempo.tasks'>
-                        <md-divider></md-divider>
-                        <md-list-item id="t[{task.uid}]">
-                            <div flex='100'layout='row' layout-align='space-around center'>
-                                <div flex="20">[{task.codeWord}]</div>
-                                <div flex='30'>[{task.path}]</div>
-                                <div flex='30'>[{task.id}]</div>
-                                <div flex="20">
-                                    <span am-time-ago="task.next_run_time"</span>
-                                </div>
-                            </div>
-                        </md-list-item>
-                    </div>
-
-                </md-list>
-            </div>
         </div>
 
         <!-- Javascript -->
@@ -229,19 +143,7 @@
 
                 sock.onopen = function(e) {
                     sock.send(
-                        JSON.stringify({'hx_subscribe': 'all_tasks'})
-                    );
-                    sock.send(
-                        JSON.stringify({'hx_subscribe': 'job_queue'})
-                    );
-                    sock.send(
                         JSON.stringify({'hx_subscribe': 'results'})
-                    );
-                    sock.send(
-                        JSON.stringify({'hx_subscribe': 'successes'})
-                    );
-                    sock.send(
-                        JSON.stringify({'hx_subscribe': 'runners'})
                     );
                     sock.send('updateJobs');
                 };
@@ -262,8 +164,8 @@
 
                     var key = Object.keys(message); // Will be "runners" or "tasks" or something.
                     var objects = message[key]
-                    console.log("Received " + Object.keys(objects).length + " " + key);
-                    console.log(objects);
+                    // console.log("Received " + Object.keys(objects).length + " " + key);
+                    // console.log(objects);
 
                     // Make sure we know about this type of object.
                     if (!(key in $scope.tiempo)) {
@@ -285,8 +187,8 @@
               return function(scope, runnerElem, attr) {
                   scope.$watch(attr.errorState, function(nv, ov) {
                     if (nv) {
-                      Velocity(runnerElem, { 'backgroundColor': '#f6f6f6' });
-                      Velocity(runnerElem, "transition.slideUpOut");
+                      Velocity(runnerElem, { 'backgroundColor': '#FFE9E9' });
+                      Velocity(runnerElem, "transition.slideRightBigOut");
                     }
                   })
                   scope.$watch(attr.runningAlert, function(nv, ov) {
@@ -297,12 +199,12 @@
                             jobElem = document.getElementById('j' + nv);
                             taskElem = document.getElementById('t' + jobObj.taskUid)
                             alertRunningSequence = [
-                                { e: jobElem, p: {'backgroundColor': '#fff9d8'}},
+                                { e: jobElem, p: {'backgroundColor': '#FF9900'}},
                                 { e: taskElem, p: "alertRunning", o: { sequenceQueue: false}},
                                 { e: jobElem, p: 'transition.slideLeftBigOut', o: { sequenceQueue: false}},
-                                { e: runnerElem, p: {'backgroundColor': '#fff9d8'}, o: { sequenceQueue: false}},
+                                { e: runnerElem, p: {'backgroundColor': '#FF9900'}, o: { sequenceQueue: false}},
                                 { e: runnerElem, p: 'transition.slideLeftBigIn', o: { sequenceQueue: false}},
-                                { e: runnerElem, p: {'backgroundColor': '#f6f6f6'}, o: { sequenceQueue: false}},
+                                { e: runnerElem, p: {'backgroundColor': '#fff'}, o: { sequenceQueue: false}},
                             ]
                         }
                     } else {
@@ -330,7 +232,7 @@
             .animation('.finishedJob', [function() {
                   return {
                     enter: function(element, doneFn) {
-                        Velocity(element, "transition.slideDownIn");
+                        Velocity(element, "transition.slideLeftBigIn");
                     },
                   }
             }]);

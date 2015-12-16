@@ -1,22 +1,33 @@
-
 from datetime import datetime
-from tiempo.execution import REDIS, RECENT_KEY
-from tiempo.task import resolve_group_namespace as rgn, Task
-from tiempo.task import task
-from tiempo import conf as tiemposettings
-from tiempo import TIEMPO_REGISTRY
+import json
 
 from django.contrib.auth.decorators import login_required
+from django.views.generic import TemplateView
 from django.shortcuts import render
 from django.http import HttpResponse
-
 import pytz
-import json
 import dateutil.parser
+
+from tiempo import conf as tiemposettings, RECENT_KEY
+from tiempo.conn import REDIS
+
 
 utc = pytz.timezone('UTC')
 local = pytz.timezone("America/New_York")
 
+
+class TiempoKiosk(TemplateView):
+    template_name = 'tiempo/all_tasks.html'
+    organization_logo = None
+
+    def get_context_data(self, **kwargs):
+        context = super(TiempoKiosk, self).get_context_data(**kwargs)
+        context['organization_logo'] = self.organization_logo
+        return context
+
+
+class TiempoHistory(TemplateView):
+    template_name = 'tiempo/history.html'
 
 
 def dashboard(request):
@@ -41,13 +52,6 @@ def dashboard(request):
     return response
 
 
-def all_tasks(request):
-    tasks = TIEMPO_REGISTRY
-
-    response = render(request, 'tiempo/all_tasks.html', {
-        'tasks': tasks
-    })
-    return response
 
 
 @login_required

@@ -12,8 +12,8 @@ def auto_load_tasks():
             importlib.import_module(app + '.tasks')
             chalk.blue('imported tasks from %s' % app)
         except ImportError as e:
-            # print traceback.format_exc()
-            pass
+            if not e.args[0] == 'No module named tasks':
+                raise
     if DEBUG:
         pass
         # import tasks
