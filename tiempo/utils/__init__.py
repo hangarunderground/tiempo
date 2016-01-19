@@ -83,51 +83,6 @@ def force_bytes(s, encoding='utf-8', strings_only=False, errors='strict'):
         return s.encode(encoding, errors)
 
 
-def task_time_keys():
-    """
-        creates a dictionary containing a mapping every combination of
-        cron like keys with the corresponding amount of time
-        until the next execution of such a task if it were to be executed
-        now.
-
-
-        ie:
-
-        {'*.*.*': <1 minute from now>,}
-        {'*.5.*': <1 minute from now>,}
-        {'*.5.11': <24 hours from now>,}
-
-    """
-
-    time_keys = {}
-
-    now = utc_now()
-
-    # every day, every hour, every minute
-    time_keys['*.*.*'] = now + datetime.timedelta(minutes=1)
-
-    # every day, every hour, this minute
-    time_keys[now.strftime('*.*.%M')] = now + datetime.timedelta(hours=1)
-
-    # every day, this hour, this minute
-    time_keys[now.strftime('*.%H.%M')] = now + datetime.timedelta(days=1)
-
-    # this day, this hour, this minute
-    time_keys[now.strftime('%d.%H.%M')] = now + relativedelta(months=1)
-
-    # this day, this hour, every minute
-    time_keys[now.strftime('%d.%H.*')] = now + datetime.timedelta(minutes=1)
-
-    # this day, every hour, every minute
-    time_keys[now.strftime('%d.*.*')] = now + datetime.timedelta(minutes=1)
-
-    # every day, this hour, every minute
-    time_keys[now.strftime('*.%H.*')] = now + datetime.timedelta(minutes=1)
-
-    # logger.debug(time_keys.keys())
-    return time_keys
-
-
 def namespace(group_name):
     if group_name:
         return '%s:%s' % (REDIS_GROUP_NAMESPACE, group_name)

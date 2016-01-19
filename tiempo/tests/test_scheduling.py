@@ -10,7 +10,7 @@ from sample_tasks import some_callable
 from tiempo.conn import REDIS
 from tiempo.utils import namespace, utc_now
 from tiempo.work import Trabajo
-
+import unittest
 from tiempo.utils.premade_decorators import daily_task, hourly_task, monthly_task, minutely_task, unplanned_task
 
 
@@ -62,7 +62,10 @@ class TaskScheduleTests(TestCase):
         self.assertEqual(daily.get_schedule(), '*.01.*')
         self.assertEqual(monthly.get_schedule(), '04.14.17')
 
+    @unittest.skip("Pending new logic.")
     def test_minutely_tasks_expire_in_60_seconds(self):
+        self.fail()
+        # Here's how this used to work, when next_expiration_dt() was a thing:
         minutely_task = Trabajo(priority=1, periodic=True)
         minutely = minutely_task(some_callable)
         now = utc_now()
@@ -171,7 +174,6 @@ class TaskScheduleTests(TestCase):
         # run next month.
 
         self.assertEqual(monthly_delta, timedelta(days=8, hours=1, minutes=46, seconds=15))
-
 
     def test_unit_task_get_times_for_window(self):
         # task that runs on the 5th minute of every hour

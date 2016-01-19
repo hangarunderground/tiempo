@@ -38,7 +38,7 @@ settings.configure(
 
     INSTALLED_APPS=[
         'tiempo',
-        'tiempo.contrib.django',
+        'tiempo.contrib.django_app',
         'tiempo_web',
         'django.contrib.auth',
         'django.contrib.contenttypes',

@@ -48,34 +48,51 @@ class ScheduleExpiryTests(TestCase):
 
     def test_consecutive_scheduling_force_interval(self):
 
+        int_const = 1
+
         # create a task with a forced interval of 1 second.
-        forced_interval = Trabajo(force_interval=1)(some_callable)
+        forced_interval = Trabajo(force_interval=int_const)(some_callable)
 
         queued = forced_interval.currently_scheduled_keys()
         self.assertEqual(len(queued), 0)
 
         schedule_tasks_for_queueing()
         queued = forced_interval.currently_scheduled_keys()
-        first_key = queued[0]
-        last_key = queued[-1]
+
+        # extract the list of unix timestamps from the redis scheduled keys
+        orig_times = [int(key.split(':')[-1]) for key in queued]
+        orig_times.sort()
 
         self.assertEqual(len(queued), 100)
 
         # wait 1 second so... any time values that would be generated
         # on subsequent scheduling iterations would be different
-        time.sleep(1)
+        time.sleep(int_const)
 
         # schedule again
         schedule_tasks_for_queueing()
         queued = forced_interval.currently_scheduled_keys()
 
+        # extract the list of unix timestamps from the redis scheduled keys
+        times = [int(key.split(':')[-1]) for key in queued]
+        times.sort()
+
         # there should be no new tasks scheduled
         self.assertEqual(len(queued), 100)
 
-        # the keys should still be the same
-        self.assertEqual(queued[0], first_key)
-        self.assertEqual(queued[-1], last_key)
+        # the keys should NOT still be the same because we have waited for a
+        # scheduled key to expire and re-run the `schedule_tasks_for_queueing`
+        # which would schedule a more recent scheduled key for this
+        # force_interval task
+        self.assertNotEqual(orig_times, times)
+        self.assertEqual(times[0] - orig_times[0], int_const)
 
+        intervals = list(
+            set([new - old for new, old in zip(times, orig_times)])
+        )
+        # assert that all of the intervals are the same i.e. the force_interval
+        self.assertEqual(len(intervals), 1)
+        self.assertEqual(intervals[0], int_const)
 
     def test_consecutive_scheduling_periodic(self):
         window_begin = utc_now()

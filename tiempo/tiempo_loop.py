@@ -70,7 +70,7 @@ def let_runners_pick_up_queued_tasks():
 
 def schedule_tasks_for_queueing():
     if schedule_lock.acquire():
-        pipe = REDIS.pipeline() 
+        pipe = REDIS.pipeline()
         for task in TIEMPO_REGISTRY.values():
             # TODO: Does this belong in Trabajo?  With pipe as an optional argument?
             run_times = task.check_schedule()
