@@ -1,1 +1,2 @@
-from redis.exceptions import ResponseError
+class JobDataError(RuntimeError):
+    pass

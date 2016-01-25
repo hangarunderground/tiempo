@@ -1,3 +1,5 @@
 django
 hendrix
 coverage
+tox
+pyflakes

@@ -1,23 +1,22 @@
 language: python
-install:
-  - pip install tox
-  - pip install pyflakes
 services:
   - redis-server
-# Caution - no way to invalidate this.  If we remove a dep, we might need to run a build with this block commented out.
-cache:
-  directories:
-    - /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
-    - /home/travis/miniconda/lib/python2.7/site-packages
-    - /home/travis/.cache/pip/
+# Caution - no way to invalidate this.  If we remove a dep, we might need to run a build with this block commented out.  Additionally, it seems that the python version needs to be ticked each time Travis upgrades. This is the price we pay for Travis caching.
+#cache:
+# directories:
+#   - ~/virtualenv
+#   - ~/miniconda
+#   - ~/.cache/pip/
 notifications:
   email:
     recipients:
     - justin@justinholmes.com
     on_success: change
     on_failure: always
-script: tox
 before_install:
-  - pip install codecov
+  - pip install -r requirements.txt
+  - pip install -r requirements_dev.txt
+  - pip install --upgrade codecov tox pyflakes
+script: coverage run --source tiempo runtests.py
 after_success:
   - codecov

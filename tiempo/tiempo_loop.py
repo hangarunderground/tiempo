@@ -61,16 +61,20 @@ def let_runners_pick_up_queued_tasks():
         result = runner.cycle()
 
         if not result in (BUSY, IDLE):
-            # If the runner is neither busy nor idle, it will have returned a Deferred.
+            # The runner might be BUSY (still working on a task)
+            # or it might be IDLE (without a task to run and with none to pick up).
+            # Otherwise, it will have JUST PICKED UP A TASK.
+            # If this is the case, it will have returned a Deferred.
             # We add our paths for success and failure here.
             result.addCallbacks(runner.handle_success, runner.handle_error)
+            result.addCallbacks(runner.cleanup)
 
         runner.announce('runners')  # The runner may have changed state; announce it.
 
 
 def schedule_tasks_for_queueing():
     if schedule_lock.acquire():
-        pipe = REDIS.pipeline() 
+        pipe = REDIS.pipeline()
         for task in TIEMPO_REGISTRY.values():
             # TODO: Does this belong in Trabajo?  With pipe as an optional argument?
             run_times = task.check_schedule()

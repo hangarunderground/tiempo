@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from redis.exceptions import ResponseError
 from tiempo.conn import REDIS
-import json
 from tiempo.locks import insight_pipe_lock
+
 
 def completed_jobs():
     """

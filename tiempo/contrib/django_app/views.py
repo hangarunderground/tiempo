@@ -36,7 +36,7 @@ def dashboard(request):
 
     queue_length = [
         {
-        'name': t, 
+        'name': t,
         'length': REDIS.llen(rgn(t)),
         'started': json.loads(REDIS.get('tiempo_last_started_%s'%rgn(t))) if REDIS.get('tiempo_last_started_%s'%rgn(t)) else {},
         'finished': json.loads(REDIS.get('tiempo_last_finished_%s'%rgn(t))) if REDIS.get('tiempo_last_finished_%s'%rgn(t)) else {},
