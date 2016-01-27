@@ -50,7 +50,6 @@ class JobReportingTests(TestCase):
 
         def check(result, job):
             cj = completed_jobs()
-            self.fail()
             self.assertTrue(cj)
 
         d.addCallback(check, job)
