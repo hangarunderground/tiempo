@@ -8,7 +8,7 @@ from tiempo.conn import REDIS
 from tiempo.work import Trabajo, Job
 from tiempo.tests.sample_tasks import some_callable
 from tiempo.insight import completed_jobs
-from tiempo.runner import Runner
+from tiempo.runner import Runner, cleanup
 
 class RunnerTests(TestCase):
     """
@@ -34,8 +34,7 @@ class RunnerTests(TestCase):
         self.assertIsInstance(result, Deferred)
         self.assertEqual(runner.cycle(), 500)
         self.assertEqual(runner.cycle(), 500)
-        result.addCallback(runner.cleanup)
-        runner.run()
+        result.addBoth(cleanup, (runner))
         return
 
     def test_runner_cleanup(self):
@@ -48,6 +47,6 @@ class RunnerTests(TestCase):
         job =self.simple_job.soon()
         result = runner.cycle()
         self.assertIsInstance(result, Deferred)
-        result.addCallbacks(runner.cleanup)
+        result.addBoth(cleanup, (runner))
         result.addCallback(check)
         return

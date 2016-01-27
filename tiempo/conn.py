@@ -1,4 +1,5 @@
 import redis
+from collections import deque
 from twisted.logger import Logger
 from .conf import REDIS_HOST, REDIS_PORT, REDIS_QUEUE_DB, REDIS_PW
 
@@ -19,9 +20,15 @@ def subscribe_to_backend_notifications(db=REDIS_QUEUE_DB):
     NOTIFY_PUBSUB.psubscribe('__keyevent@%s__:expired' % db)
 
 
-def hear_from_backend():
-    events = []
-    def parse_backend():
+def create_event_queue():
+    """
+    Returns a closure that updates and returns the events queue
+    """
+    events = deque([])
+    def update_event_queue():
+        """
+        A function that updates the events queue and returns it
+        """
         try:
             message = NOTIFY_PUBSUB.parse_response(block=False)
         except AttributeError, e:
@@ -32,4 +39,17 @@ def hear_from_backend():
             event = NOTIFY_PUBSUB.handle_message(message)
             events.append(event)
         return events
-    return parse_backend
+    return update_event_queue
+
+def check_backend():
+    """
+    A syncronous alternative for update_event_queue.
+    Parses all events and returns them as a list.
+    """
+    events = []
+    while True:
+        message = NOTIFY_PUBSUB.parse_response(block=False)
+        if message:
+            event = NOTIFY_PUBSUB.handle_message(message)
+            events.append(event)
+        return events

@@ -114,17 +114,6 @@ class Runner(object):
 
         return task.run(runner=self)
 
-    def cleanup(self, result):
-        """A callback that takes a Runner instance and sanitizes it. !Destructive Function!"""
-
-        self.current_job.finish()
-
-        self.current_job = self.start_time = self.finish_time = None
-
-        self.error_state = False
-        self.announce('runners')  # Announce that the runner is back to idle.
-        return  # And go back to cycling.
-
     def handle_success(self, return_value):
         """
         A callback to handle a successful running of a job
@@ -135,8 +124,6 @@ class Runner(object):
         runner_dict.update({'result': self.announcer.results_brief})
         runner_dict.update({'result_detail': json.dumps(self.announcer.results_detail)})
 
-        ##
-        # hxdispatcher.send('history', {'finished_runners': {self.current_job.uid: runner_dict}})
         REDIS.hmset('results:%s' % self.current_job.uid, runner_dict)
         # TODO: Add some kind of trim here so that results:* don't grow huge.
         ##
@@ -155,9 +142,6 @@ class Runner(object):
         detail = runner_dict['result_detail'] = self.announcer.results_detail
         detail.append(str(failure.getTraceback()))
         REDIS.hset('results:%s' % self.current_job.uid, runner_dict)
-
-        # TODO: Remove this, using only the backend push instead.
-        # hxdispatcher.send('history', {'finished_runners': {self.current_job.uid: runner_dict}})
 
         return
 
@@ -216,3 +200,15 @@ class Runner(object):
         for runner_list in RUNNERS.values():
             if self in runner_list:
                 runner_list.remove(self)
+
+def cleanup(runner):
+    """
+    A callback for runner management.
+
+    Creates a new runner and shutsdown the old one.
+    """
+    number = runner.number
+    task_groups = runner.task_groups
+    new_runner = Runner(number, task_groups)
+    runner.shut_down
+    return new_runner

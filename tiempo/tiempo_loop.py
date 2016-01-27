@@ -15,14 +15,15 @@ from twisted.internet import task
 from twisted.logger import Logger
 
 from constants import BUSY, IDLE
-from tiempo.conn import REDIS, subscribe_to_backend_notifications, hear_from_backend
+from tiempo.conn import REDIS, subscribe_to_backend_notifications, create_event_queue
 from tiempo.utils import namespace, utc_now
 from tiempo.work import announce_tasks_to_client
 from tiempo.locks import schedule_lock
+from tiempo.runner import cleanup
 
 logger = Logger()
 ps = REDIS.pubsub()
-parse_backend = hear_from_backend()
+update_queue = create_event_queue()
 
 def cycle():
     """This function runs in the event loop for tiempo"""
@@ -46,7 +47,7 @@ def glean_events_from_backend():
     """
     Checks redis for pubsub events.
     """
-    events = parse_backend()
+    events = update_queue()
     return events
 
 
@@ -62,7 +63,7 @@ def let_runners_pick_up_queued_tasks():
             # If this is the case, it will have returned a Deferred.
             # We add our paths for success and failure here.
             result.addCallbacks(runner.handle_success, runner.handle_error)
-            result.addCallbacks(runner.cleanup)
+            result.addBoth(cleanup, (runner))
 
         runner.announce('runners')  # The runner may have changed state; announce it.
 
