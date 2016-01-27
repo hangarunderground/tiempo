@@ -52,4 +52,5 @@ def check_backend():
         if message:
             event = NOTIFY_PUBSUB.handle_message(message)
             events.append(event)
-        return events
+        else:
+            return events

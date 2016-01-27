@@ -40,11 +40,34 @@ class EventsBroadCastTests(TestCase):
         update_queue()
         update_queue()
         event_queue = update_queue()
+        newest_event = event_queue.popleft()
+        self.assertEqual(newest_event['type'], 'pmessage')
         for event in event_queue:
             key = event['channel'].split(':', 1)[1]
-            new_value = REDIS.get(key)
-            if new_value == 'a large farva':
+            if key is 'results*':
+                new_value = REDIS.get(key)
                 self.assertEqual(new_value, 'a large farva')
+        REDIS.flushall()
 
-    def teardown(self):
+class EventsTests(TestCase):
+
+    def test_check_backend(self):
+        REDIS.flushall()
+        subscribe_to_backend_notifications()
+        REDIS.config_get('notify-keyspace-events')
+        time.sleep(.1)
+
+        subscribe_event = check_backend()[0]
+        self.assertEqual(subscribe_event['type'], 'psubscribe')
+
+        REDIS.set('results:whatever', 'tapestry needle')
+        
+        try:
+            set_event = check_backend()[0]
+        except IndexError:
+            self.fail("""Didn't get enough items from the backend.
+            Are notifications enabled?""")
+        key = set_event['channel'].split(':', 1)[1]
+        new_value = REDIS.get(key)
+        self.assertEqual(new_value, 'tapestry needle')
         REDIS.flushall()
