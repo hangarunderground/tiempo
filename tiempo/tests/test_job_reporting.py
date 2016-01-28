@@ -54,7 +54,3 @@ class JobReportingTests(TestCase):
 
         d.addCallback(check, job)
         return d
-
-
-
-
