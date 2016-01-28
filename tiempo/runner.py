@@ -45,9 +45,11 @@ class Runner(object):
 
     def cycle(self):
         '''
-        If idle, find a job and run it.
+        Try to find a job and run it.
+        If this runner already has a job, returns BUSY.
+        If this runner has no job and there is none to be found, return IDLE.
+        If this runner finds a new job right now, return a Deferred for that job's run().
         '''
-
 
         # If we have a current Job, return BUSY and go no further.
         if self.current_job:
@@ -62,16 +64,16 @@ class Runner(object):
         # ...otherwise, look for a Job to run...,
         job_string = self.seek_job()
 
-        # ...and run it.
-        if job_string:
+        if not job_string:
+            # If we didn't get a job, we're IDLE.
+            return IDLE
+        else:
+            # If we did get a job, we're ready to defer it and return the Deferred.
             self.action_time = utc_now()
             self.current_job = job = Job.rehydrate(job_string)
             logger.info("%s adopting %s" % (self, job))
             d = threads.deferToThread(self.run)
             return d
-        else:
-            # If we didn't get a job, we're IDLE.
-            return IDLE
 
     def seek_job(self):
 
@@ -93,7 +95,7 @@ class Runner(object):
 
     def run(self):
         '''
-        Run the current job's task.
+        Run the current job's task now.
         '''
 
         self.start_time = utc_now()
@@ -113,7 +115,7 @@ class Runner(object):
         return task.run(runner=self)
 
     def cleanup(self, result):
-        """Takes a Runner instance and sanitizes it. !Destructive Function!"""
+        """A callback that takes a Runner instance and sanitizes it. !Destructive Function!"""
 
         self.current_job.finish()
 
@@ -124,10 +126,11 @@ class Runner(object):
         return  # And go back to cycling.
 
     def handle_success(self, return_value):
-
+        """
+        A callback to handle a successful running of a job
+        """
         self.finish_time = utc_now()
         runner_dict = self.serialize_to_dict()
-        runner_dict.update({'return_value': str(return_value)})
 
         runner_dict.update({'result': self.announcer.results_brief})
         runner_dict.update({'result_detail': json.dumps(self.announcer.results_detail)})
@@ -138,10 +141,12 @@ class Runner(object):
         # TODO: Add some kind of trim here so that results:* don't grow huge.
         ##
 
-        return self.cleanup(return_value)
+        return
 
     def handle_error(self, failure):
-
+        """
+        A callback to handle a failed attempt at running a job
+        """
         self.finish_time = utc_now()
         self.error_state = True
         logger.info(failure.getBriefTraceback())  # TODO: What level do we want this to be?
@@ -154,7 +159,7 @@ class Runner(object):
         # TODO: Remove this, using only the backend push instead.
         # hxdispatcher.send('history', {'finished_runners': {self.current_job.uid: runner_dict}})
 
-        return self.cleanup(failure)
+        return
 
     def serialize_to_dict(self, alert=False):
 

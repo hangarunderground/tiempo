@@ -1,7 +1,8 @@
 import redis
+from twisted.logger import Logger
 from .conf import REDIS_HOST, REDIS_PORT, REDIS_QUEUE_DB, REDIS_PW
 
-
+logger = Logger()
 REDIS = redis.StrictRedis(
     host=REDIS_HOST,
     port=REDIS_PORT,
@@ -20,10 +21,15 @@ def subscribe_to_backend_notifications(db=REDIS_QUEUE_DB):
 
 def hear_from_backend():
     events = []
-    while True:
-        message = NOTIFY_PUBSUB.parse_response(block=False)
+    def parse_backend():
+        try:
+            message = NOTIFY_PUBSUB.parse_response()
+        except AttributeError, e:
+            if e.args[0] == "'NoneType' object has no attribute 'can_read'":
+                logger.warn("Tried to listen to redis pubsub that wasn't subscribed.")
+            return events
         if message:
             event = NOTIFY_PUBSUB.handle_message(message)
             events.append(event)
-        else:
-            return events
+        return events
+    return parse_backend
