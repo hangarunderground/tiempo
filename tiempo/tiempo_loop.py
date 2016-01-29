@@ -15,14 +15,16 @@ from twisted.internet import task
 from twisted.logger import Logger
 
 from constants import BUSY, IDLE
-from tiempo.conn import REDIS, subscribe_to_backend_notifications, hear_from_backend
+from tiempo.conn import REDIS, subscribe_to_backend_notifications, create_event_queue
 from tiempo.utils import namespace, utc_now
 from tiempo.work import announce_tasks_to_client
 from tiempo.locks import schedule_lock
+from tiempo.runner import cleanup
+from tiempo.queueing import queue_expired_tasks, queue_jobs
 
 logger = Logger()
 ps = REDIS.pubsub()
-parse_backend = hear_from_backend()
+update_queue = create_event_queue()
 
 def cycle():
     """This function runs in the event loop for tiempo"""
@@ -46,7 +48,7 @@ def glean_events_from_backend():
     """
     Checks redis for pubsub events.
     """
-    events = parse_backend()
+    events = update_queue()
     return events
 
 
@@ -62,10 +64,23 @@ def let_runners_pick_up_queued_tasks():
             # If this is the case, it will have returned a Deferred.
             # We add our paths for success and failure here.
             result.addCallbacks(runner.handle_success, runner.handle_error)
-            result.addCallbacks(runner.cleanup)
+            result.addBoth(cleanup, (runner))
 
         runner.announce('runners')  # The runner may have changed state; announce it.
+    return
 
+def queue_scheduled_tasks(backend_events):
+    """
+    Takes a list. Iterates over the events in the list. If they are both scheduled and expired,
+    calls task.spawn_job_and_run_soon.
+    """
+    # TODO: What happens if this is running on the same machine?
+    run_now = queue_expired_tasks(backend_events)
+
+    # We now know which jobs need to be run.  Run them if marked.
+    queued_jobs = queue_jobs(run_now)
+    TIEMPO_REGISTRY.update(queued_jobs)
+    return
 
 def schedule_tasks_for_queueing():
     if schedule_lock.acquire():
@@ -86,41 +101,6 @@ def schedule_tasks_for_queueing():
 
             pipe.execute()
         schedule_lock.release()
-
-
-def queue_scheduled_tasks(backend_events):
-    """
-    Takes a list. Iterates over the events in the list. If they are both scheduled and expired,
-    calls task.spawn_job_and_run_soon.
-    """
-    # TODO: What happens if this is running on the same machine?
-    run_now = {}
-    for task_string, task in TIEMPO_REGISTRY.items():
-        run_now[task_string] = False
-
-        for event in backend_events:
-
-            if event['type'] == 'psubscribe':
-                # ignore subscribe events.
-                continue
-
-            # If this is a scheduled event and it has now expired....
-            if event['pattern'].split(':')[1] == 'expired' and event['data'].split(':')[1] == "scheduled":
-                data = event['data'].split(':')
-                # ...then it's time to run the corresponding task.
-                task_key_that_expired = data[2]
-                run_now[task_key_that_expired] = True
-                logger.info("Heard expiry %s." % data)
-
-        # We now know which jobs need to be run.  Run them if marked.
-        queued_jobs = {}
-        for candidate, go_flag in run_now.items():
-            if go_flag:
-                task = TIEMPO_REGISTRY[candidate]
-                queued_jobs[candidate] = task.spawn_job_and_run_soon()
-            else:
-                queued_jobs[candidate] = False
-
 
 def broadcast_new_announcements_to_listeners(events):
 

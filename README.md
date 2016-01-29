@@ -26,4 +26,4 @@ Point your browser to 127.0.0.1:4050/tiempo_kiosk
   * 'INSTALLED_APPS' += 'tiempo.contrib.django_app'
 * in urls.py
   *  add "url(r'^tiempo/', include('tiempo.contrib.django_app.urls', namespace='tiempo'))," to your patterns.
-  
+
