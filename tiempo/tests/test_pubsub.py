@@ -41,11 +41,11 @@ class EventsBroadCastTests(TestCase):
         update_queue()
         event_queue = update_queue()
         newest_event = event_queue.popleft()
-        self.assertEqual(newest_event['type'], 'pmessage')
         for event in event_queue:
             key = event['channel'].split(':', 1)[1]
             if key is 'results*':
                 new_value = REDIS.get(key)
+                self.assertTrue(new_value)
                 self.assertEqual(new_value, 'a large farva')
         REDIS.flushall()
 

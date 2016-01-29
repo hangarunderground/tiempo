@@ -3,15 +3,20 @@ import string
 import random
 import time
 import datetime
+from collections import deque
 
+from twisted.internet import task
 from twisted.trial.unittest import TestCase
 
 from six.moves.queue import Queue
-from tiempo.conn import subscribe_to_backend_notifications, REDIS
+from tiempo.conn import subscribe_to_backend_notifications, REDIS, check_backend
 from tiempo.tests.sample_tasks import some_callable
-from tiempo.tiempo_loop import schedule_tasks_for_queueing, glean_events_from_backend
+from tiempo.tiempo_loop import schedule_tasks_for_queueing, glean_events_from_backend, cycle
 from tiempo.work import Trabajo
+from tiempo.runner import Runner
+from tiempo.insight import completed_jobs
 from tiempo.utils import utc_now
+from tiempo.utils.premade_decorators import minutely_task
 
 q = Queue()
 random_string = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
@@ -21,11 +26,31 @@ def unblocker():
     q.put(random_string)
 
 
-# class WholeCycleTests(TestCase):
-#
-#     def test_whole_cycle(self):
-#         tiempo_loop.cycle()
-#         self.fail()
+class WholeCycleTests(TestCase):
+
+    def setup(self):
+        TIEMPO_REGISTRY.clear()
+        REDIS.flushall()
+        clock = task.Clock()
+        self.looper = task.LoopingCall(cycle)
+        self.looper.start(1)
+        runner0 = Runner(0, [1])
+        runner1 = Runner(1, [1])
+        runner2 = Runner(2, [2])
+        minutely = Trabajo(priority=1, periodic=True, second=30)(some_callable)
+        for x in range(0, 10000):
+            clock.advance(1)
+
+    def teardown(self):
+        self.looper.stop()
+        REDIS.flushall()
+
+    def test_glean_returns_event_queue(self):
+        events = glean_events_from_backend()
+        self.assertIsInstance(events, deque)
+
+    def test_whole_cycle(self):
+        self.fail()
 
 class ScheduleExpiryTests(TestCase):
     '''

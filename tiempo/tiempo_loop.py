@@ -66,6 +66,7 @@ def let_runners_pick_up_queued_tasks():
             result.addBoth(cleanup, (runner))
 
         runner.announce('runners')  # The runner may have changed state; announce it.
+    return
 
 
 def schedule_tasks_for_queueing():
@@ -121,6 +122,7 @@ def queue_scheduled_tasks(backend_events):
                 queued_jobs[candidate] = task.spawn_job_and_run_soon()
             else:
                 queued_jobs[candidate] = False
+        return
 
 
 def broadcast_new_announcements_to_listeners(events):
