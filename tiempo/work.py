@@ -105,7 +105,7 @@ class Job(object):
         """
 
         self.data = {
-            'function_module_path': inspect.getmodule(self.task._get_function()).__name__,
+            'function_module_path': inspect.getmodule(self.task.get_function()).__name__,
             'function_name': self.task.func.__name__,
             'args_to_function': args,
             'kwargs_to_function': kwargs,
@@ -348,6 +348,49 @@ class Trabajo(object):
         TIEMPO_REGISTRY[self.key] = self
         return self
 
+    def run(self, runner=None):
+        """
+        runs the callable.
+
+        All paths of execution should eventually lead here.
+        """
+
+        func = self.get_function()
+        kwargs = getattr(self, 'kwargs_to_function', {})
+
+        if self.announcer_name:
+            kwargs[self.announcer_name] = runner.announcer
+
+        result = func(
+            *getattr(self, 'args_to_function', ()),
+            **kwargs
+        )
+        return result
+
+    def get_function(self):
+        """
+        Imports the callable to be run
+
+        Functions (or methods) don't survive data serialization,
+        and have to be imported so that they can run.
+        """
+        if hasattr(self, 'func'):
+            return self.func
+
+        if not self.function_name:
+            self._thaw()
+
+        if hasattr(self, 'function_module_path'):
+
+            module = importlib.import_module(self.function_module_path)
+            obj = getattr(module, self.function_name)
+
+            if hasattr(obj, 'func'):
+                return obj.func
+            return obj
+        else:
+            raise JobDataError("could not find function")
+
     @property
     def group_key(self):
         return namespace(self.group)
@@ -380,23 +423,6 @@ class Trabajo(object):
         }
         return task_as_dict
 
-    def run(self, runner=None):
-        """
-        run right now
-        """
-
-        func = self._get_function()
-        kwargs = getattr(self, 'kwargs_to_function', {})
-
-        if self.announcer_name:
-            kwargs[self.announcer_name] = runner.announcer
-
-        result = func(
-            *getattr(self, 'args_to_function', ()),
-            **kwargs
-        )
-        return result
-
     def _thaw(self, data=None):
         """
             If this is called it is after a task has been instantiated by
@@ -414,24 +440,6 @@ class Trabajo(object):
         if data:
             for key, val in data.items():
                 setattr(self, key, val)
-
-    def _get_function(self):
-        if hasattr(self, 'func'):
-            return self.func
-
-        if not self.function_name:
-            self._thaw()
-
-        if hasattr(self, 'function_module_path'):
-
-            module = importlib.import_module(self.function_module_path)
-            obj = getattr(module, self.function_name)
-
-            if hasattr(obj, 'func'):
-                return obj.func
-            return obj
-        else:
-            print "could not find function", self.func
 
     def is_planned(self):
         '''
@@ -492,8 +500,8 @@ class Trabajo(object):
 
     def get_next_time_for_periodic_task(self, search_start_time):
         """
-            returns the next date after the date specified that
-            meets the conditions needed to run this task
+        returns the next date after the date specified that
+        meets the conditions needed to run this task
 
         """
 
@@ -566,7 +574,8 @@ class Trabajo(object):
         """
         Takes a datetime, which defaults to utc_now().
 
-        If this task is currently planned, returns the first time after dt when this task is eligible to be run.
+        If this task is currently planned, returns the first time
+        after dt when this task is eligible to be run.
 
         Otherwise, returns None.
         """
@@ -679,7 +688,7 @@ class Trabajo(object):
     def soon(self, tiempo_wait_for=None,
              *args, **kwargs):
         '''
-        Just like spawn_job_and_run_roon(), but returns self instead of the job.
+        Just like spawn_job_and_run_soon(), but returns self instead of the job.
 
         Also takes argument "tiempo_wait_for" for backward compat.
         '''

@@ -53,4 +53,3 @@ class TestTaskInQueue(TestCase):
         d.addCallback(assert_that_unblocker_ran)
 
         return d
-
