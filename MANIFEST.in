@@ -1,4 +1,4 @@
 include README.md LICENSE requirements.txt
 include tiempo/templates/*.j2 tiempo/templates/*.html
 include docs/*html docs/*rst
-include tiempo/contrib/django/templates/tiempo/*.html
+include tiempo/contrib/django_app/templates/tiempo/*.html
