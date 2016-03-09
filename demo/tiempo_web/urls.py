@@ -1,9 +1,10 @@
-from django.conf.urls import include, url
+from django.conf.urls import include, url, patterns
 
-from tiempo.contrib.django_app.views import TiempoKiosk, TiempoHistory
+from tiempo.contrib.django_app.api.urls import tiempo_api_router
+from tiempo.contrib.django_app.views import TiempoKiosk
 
-urlpatterns = [
-    url(r'^tiempo/', include('tiempo.contrib.django_app.urls')),
+urlpatterns = patterns('',
+    url(r'^tiempo/api/v1/', include(tiempo_api_router.urls)),
     url(r'^tiempo_kiosk', TiempoKiosk.as_view()),
-    url(r'^history', TiempoHistory.as_view()),
-]
+    # url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+)

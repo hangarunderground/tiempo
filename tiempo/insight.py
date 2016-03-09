@@ -18,11 +18,11 @@ def completed_jobs():
 
     try:
         jobs_list = [job for job in pipe.execute()]
-        insight_pipe_lock.release()
     except ResponseError:
-        insight_pipe_lock.release()
         # TODO: Announce that one of the result keys didn't point to a hash and that we don't know what to do about it.
         raise
+    finally:
+        insight_pipe_lock.release()
 
     uids = [key.split(":", 1)[1] for key in keys]
     jobs_and_keys_list = zip(uids, jobs_list)

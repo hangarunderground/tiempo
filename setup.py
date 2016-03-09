@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python',
     ],
     keywords=['twisted', 'tasks', 'redis', 'scheduling'],
-    install_requires=readlines('requirements.txt'),
+    install_requires=readlines('requirements/requirements.txt'),
     extras_require={
         'dev': ['ipdb', 'django', 'hendrix', 'coverage'],
         'django': ['django', ]

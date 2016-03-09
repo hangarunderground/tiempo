@@ -1,13 +1,9 @@
-import datetime
-
 from twisted.trial.unittest import TestCase
-from twisted.internet.defer import Deferred
-from twisted.internet import reactor
 from tiempo import TIEMPO_REGISTRY
-from tiempo.work import Trabajo, Job
-from tiempo.tests.sample_tasks import some_callable
-from tiempo.runner import Runner, cleanup
 from tiempo.exceptions import JobDataError
+from tiempo.tests.sample_tasks import some_callable
+from tiempo.work import Trabajo
+
 
 class ExecutionTests(TestCase):
     """

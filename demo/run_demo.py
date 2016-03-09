@@ -1,8 +1,6 @@
 import os, sys
-
 from hendrix.deploy.base import HendrixDeploy
 from django.conf import settings
-from hendrix.facilities.resources import NamedResource
 from twisted.internet.protocol import Factory
 from txsockjs.factory import SockJSResource
 
@@ -29,9 +27,10 @@ def simpleObserver(event):
 tiempo_demo_observer = FilteringLogObserver(simpleObserver, [LogLevelFilterPredicate(defaultLogLevel=LogLevel.info)])
 
 globalLogPublisher.addObserver(tiempo_demo_observer)
-
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 settings.configure(
+    APPEND_SLASH=True,
     MIDDLEWARE_CLASSES=[],
     ROOT_URLCONF='tiempo_web.urls',
     DEBUG=True,
@@ -43,6 +42,7 @@ settings.configure(
         'django.contrib.auth',
         'django.contrib.contenttypes',
         'django.contrib.staticfiles',
+        'rest_framework',
         ],
     SECRET_KEY="LLAMAS",
 
@@ -53,11 +53,15 @@ settings.configure(
         }
     },
     STATIC_URL='/static/',
+    STATIC_ROOT="%s/tiempo/static" % BASE_DIR,
     TIEMPO_THREAD_CONFIG=[('1', '2', '3'), ('1',)]
 )
 
-
+# Unsettings workaround
 from django.core.wsgi import get_wsgi_application
+from hendrix.facilities.resources import NamedResource
+from hendrix.contrib.resources.static import DjangoStaticsFinder
+
 application = get_wsgi_application()
 
 deployer = HendrixDeploy(options={'wsgi': application,
@@ -73,5 +77,6 @@ TiempoMessageResource.putChild(
 )
 
 deployer.resources.append(TiempoMessageResource)
+deployer.resources.append(DjangoStaticsFinder)
 
 deployer.run()

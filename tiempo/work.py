@@ -57,6 +57,7 @@ class Job(object):
     def __init__(self, task, reconstitute_from=None, report_handler=None):
 
         self.task = task
+        self.data = {}
 
         if reconstitute_from:
             self.uid = reconstitute_from['uid']
@@ -196,7 +197,7 @@ class Job(object):
 
         data = {
             'key': self.task.key,
-            'uid':self.uid,
+            'uid': self.uid,
             'start': self.start_time.strftime('%y/%m/%d %I:%M%p'),
         }
 
@@ -461,7 +462,7 @@ class Trabajo(object):
         '''
         Takes a datetime, window_begin, which defaults to utc_now()
         without microseconds.
-        Takes a datetime, window_end, which default to one hour after dt.
+        Takes a datetime, window_end, which default to SCHEDULE_AHEAD_MINUTES after window_begin.
 
         Checks to see if this task can be enqueued at 1 or more times
         between window_begin and window_end.
@@ -473,7 +474,7 @@ class Trabajo(object):
         if window_begin:
             window_begin.replace(microsecond=0)
         else:
-            window_begin= utc_now().replace(microsecond=0)
+            window_begin = utc_now().replace(microsecond=0)
 
         window_end = window_end or window_begin + datetime.timedelta(minutes=SCHEDULE_AHEAD_MINUTES)
 
@@ -481,21 +482,16 @@ class Trabajo(object):
 
     def get_times_for_window(self, start, end):
         """
-        This method is basically a disaster area.
+        TODO 2.0: Sharpen this method.
 
-        Returns a list of datetime objects.
-        In all cases except force_interval == int
-        returns a reasonable list.
+        Ideally, this should produce the same result as this loop:
+        https://github.com/hangarunderground/tiempo/blob/a0f35b1428bf1d6da6f53e683ab2286acc73468f/tiempo/work.py#L554
 
-        It used to return lists of approximately 27 datetime objects
-        if force_interval was some number. I've hard coded 13 as
-        an upper limit for the number of datetime objects returned.
-
-        James T Farrington 2/9/2016
+        ...but work with the current data model.
         """
         cutoff = self.max_schedule_ahead or MAX_SCHEDULE_AHEAD_JOBS
 
-        out = []
+        run_times = []
         next_time = last_time = self.datetime_of_subsequent_run(start)
 
         offset = relativedelta()
@@ -505,24 +501,28 @@ class Trabajo(object):
             # so we need to bump it up by our smallest interval which
             # is currenly one minute
             offset = relativedelta(minutes=1)
-        run_time = self.check_last_run_time()
-        if run_time != None:
-            return run_time
-        while len(out) < cutoff:
+        else:
+            # TODO: Check last run time and align future run times with it.
+            offset = relativedelta(seconds=self.force_interval)
+            # run_time = self.check_last_run_time()
+            # if run_time != None:
+            #     return run_time
+
+        while len(run_times) < cutoff:
             if next_time and next_time > start and next_time < end:
-                out.append(next_time)
+                run_times.append(next_time)
                 next_time = self.datetime_of_subsequent_run(next_time + offset)
             if next_time == last_time:
                 break
             last_time = next_time
 
-        if self.force_interval:
-            try:
-                output = out[:13]
-                return output
-            except IndexError:
-                return out
-        return out
+        # if self.force_interval:
+        #     try:
+        #         output = out[:13]
+        #         return output
+        #     except IndexError:
+        #         return out
+        return run_times
 
     def check_last_run_time(self):
         if self.force_interval:
@@ -531,8 +531,13 @@ class Trabajo(object):
                 utc = pytz.UTC
                 date_object = datetime.datetime.strptime(last_time, "%Y-%m-%dT%H:%M:%S+00:00")
                 last_time = utc.localize(dt=date_object)
-                if last_time <= utc_now():
-                    return []
+                return last_time
+            else:
+                # TODO: Determine when the appropriate last_run_time for a task that has never run.
+                # For now, I'm going with... well, now.
+                return utc_now()
+        else:
+            raise NotImplementedError("Only force_interval tasks can have their last run time checked in this version.")
 
     def datetime_of_subsequent_run(self, dt=None):
         """

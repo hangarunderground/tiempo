@@ -6,6 +6,7 @@ TIEMPO_REGISTRY = {}
 # tiempo.runner.Runner add themselves as values for keys matching their groups.
 RUNNERS = {}
 
+
 def all_runners():
     all_runners = set()
     for runner_list in RUNNERS.values():
@@ -13,6 +14,16 @@ def all_runners():
             all_runners.add(runner)
 
     return all_runners
+
+
+def all_task_groups():
+    task_groups = set()
+    for runner_list in RUNNERS.values():
+        for runner in runner_list:
+            task_groups.update(runner.task_groups)
+    return task_groups
+
+
 
 
 REDIS_GROUP_NAMESPACE = 'tiempogroup'

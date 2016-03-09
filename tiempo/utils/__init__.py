@@ -1,15 +1,14 @@
-from collections import OrderedDict
-from django.utils import six
-
-from tiempo.conf import TASK_PATHS
-
-import chalk
+import datetime
 import importlib
 import os
-import datetime
+from collections import OrderedDict
+
+import chalk
 import pytz
-from dateutil.relativedelta import relativedelta
-from tiempo import REDIS_GROUP_NAMESPACE
+from django.utils import six
+
+from tiempo import REDIS_GROUP_NAMESPACE, all_task_groups
+from tiempo.conf import TASK_PATHS
 from tiempo.conn import REDIS
 
 
@@ -100,3 +99,45 @@ def all_jobs(groups):
         jobs_dict[group] = REDIS.lrange(name, 0, -1)
     return jobs_dict
 
+
+class JobReport(object):
+    '''
+    Vaguely emulates some of the behavior of a Django queryset.
+    For use in lazily evaluating redis queries for serialization.
+    Almost certainly belongs in a different module.
+    '''
+
+    limit = 0
+    offset = 0
+    has_been_evaluated = False
+
+    def __init__(self, key=None, start=0, stop=-1):
+        self.key = "results:%s" % key if key else "all_results"
+        self.start = start
+        self.stop = stop
+
+    def __getitem__(self, slice):
+        if slice.step:
+            raise TypeError("JobReport can't be sliced for step with this backend.")
+        self.start = slice.start if slice.start is not None else self.start
+        self.stop = slice.stop - 1 if slice.stop is not None else self.stop  # redis is inclusive, hence the -1.
+        return self.results()
+
+    def __len__(self):
+        return len(self.results())
+
+    def evaluate(self):
+        keys = REDIS.zrange(self.key, self.start, self.stop)
+        pipe = REDIS.pipeline()
+        for key in keys:
+            pipe.hgetall(key)
+        self._results = pipe.execute()
+        self.has_been_evaluated = True
+
+    def results(self):
+        if not self.has_been_evaluated:
+            self.evaluate()
+        return self._results
+
+    def count(self):
+        return REDIS.zcard(self.key)

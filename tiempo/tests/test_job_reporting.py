@@ -6,6 +6,7 @@ from twisted.internet import reactor
 from tiempo import TIEMPO_REGISTRY
 from tiempo.conn import REDIS
 from tiempo.exceptions import JobDataError
+from tiempo.tests.testing_utils import OneRunnerTestCase
 from tiempo.work import Trabajo, Job
 from tiempo.tests.sample_tasks import some_callable
 from tiempo.insight import completed_jobs
@@ -13,7 +14,8 @@ from tiempo.runner import Runner
 
 import unittest
 
-class JobReportingTests(TestCase):
+
+class JobReportingTests(OneRunnerTestCase):
     """
     Tests for Job instances and report_handlers
     """
@@ -21,7 +23,6 @@ class JobReportingTests(TestCase):
 #    def __init__(self):
     decorated = Trabajo()(some_callable)
     simple_job = decorated.just_spawn_job()
-    runner = Runner(0, [1])
 
     def setup(self):
         TIEMPO_REGISTRY.clear()
