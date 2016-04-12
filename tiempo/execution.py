@@ -241,6 +241,7 @@ class ThreadManager(object):
         except BaseException as e:
             chalk.red('%s got an error' % self)
             print traceback.format_exc()
+            self.active_task = None
 
     def cleanup(self):
         pass
