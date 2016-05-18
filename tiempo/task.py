@@ -305,7 +305,7 @@ class Task(TaskBase):
         return self.run()
 
     def finish(self, error=None):
-        print 'finished:', self.uid
+        #print 'finished:', self.uid
         self._enqueue_dependents()
 
         now = datetime.datetime.now()
