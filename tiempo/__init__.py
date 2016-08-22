@@ -6,4 +6,4 @@ REDIS_GROUP_NAMESPACE = 'tiempogroup'
 RECENT_KEY = 'tiempo:recent_tasks'
 RESULT_PREFIX = 'tiempo:task_result'
 
-__version__ = "1.2.1"
+__version__ = "1.2.3"
