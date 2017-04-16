@@ -387,9 +387,9 @@ class Trabajo(object):
             kwargs[self.announcer_name] = runner.announcer
 
         result = func(
-                *getattr(self, 'args_to_function', ()),
-                **kwargs
-                )
+            *getattr(self, 'args_to_function', ()),
+            **kwargs
+        )
         return result
 
     def _thaw(self, data=None):
@@ -397,12 +397,12 @@ class Trabajo(object):
             If this is called it is after a task has been instantiated by
             a worker process after being pulled as serialized data from redis
             and decoded.
-            
-            the for loop where the attrs are set from the data dict 
-            will set this task to the same state as if it was 
-            __init__ed as a decorator 
+
+            the for loop where the attrs are set from the data dict
+            will set this task to the same state as if it was
+            __init__ed as a decorator
         """
-        
+
         if not data and hasattr(self, 'data'):
             data = self.data
 
@@ -654,7 +654,7 @@ class Trabajo(object):
         # TODO: Implement report handler
 
         job = Job(task=self)
-        
+
         return job
 
     def spawn_job_and_run_soon(self,

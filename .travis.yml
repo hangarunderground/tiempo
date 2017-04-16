@@ -4,20 +4,26 @@ install:
   - pip install pyflakes
 services:
   - redis-server
-# Caution - no way to invalidate this.  If we remove a dep, we might need to run a build with this block commented out.
-cache:
-  directories:
-    - /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
-    - /home/travis/miniconda/lib/python2.7/site-packages
-    - /home/travis/.cache/pip/
 notifications:
   email:
     recipients:
     - justin@justinholmes.com
     on_success: change
     on_failure: always
-script: tox
+script:
+    - tox
 before_install:
   - pip install codecov
 after_success:
   - codecov
+
+
+# The following breaks the deployment of code. As it causes the tox script to not be installed. It's an optimization that
+# would save us a total of 3mins if it worked...
+# Caution - no way to invalidate this.  If we remove a dep, we might need to run a build with this block commented out.
+# cache:
+  # directories:
+    # - /home/travis/virtualenv/python2.7/bin
+    # - /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
+    # - /home/travis/miniconda/lib/python2.7/site-packages
+    # - /home/travis/.cache/pip/
