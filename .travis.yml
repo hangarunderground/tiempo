@@ -5,11 +5,11 @@ install:
 services:
   - redis-server
 # Caution - no way to invalidate this.  If we remove a dep, we might need to run a build with this block commented out.
-cache:
-  directories:
-    - /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
-    - /home/travis/miniconda/lib/python2.7/site-packages
-    - /home/travis/.cache/pip/
+# cache:
+#   directories:
+#     - /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
+#     - /home/travis/miniconda/lib/python2.7/site-packages
+#     - /home/travis/.cache/pip/
 notifications:
   email:
     recipients:
