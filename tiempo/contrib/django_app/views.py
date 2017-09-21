@@ -7,6 +7,7 @@ from tiempo import conf as tiemposettings
 from tiempo import TIEMPO_REGISTRY
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from django.http import HttpResponse
 
@@ -18,7 +19,7 @@ utc = pytz.timezone('UTC')
 local = pytz.timezone("America/New_York")
 
 
-
+@staff_member_required
 def dashboard(request):
 
     threads = tiemposettings.THREAD_CONFIG or tiemposettings.THREAD_DASHBOARD_CONFIG
@@ -40,7 +41,7 @@ def dashboard(request):
     })
     return response
 
-
+@staff_member_required
 def all_tasks(request):
     tasks = TIEMPO_REGISTRY
 
@@ -50,7 +51,7 @@ def all_tasks(request):
     return response
 
 
-@login_required
+@staff_member_required
 def recent_tasks(request):
     start = int(request.GET.get('offset', 0))
     end = start + int(request.GET.get('limit', 1000))
@@ -74,7 +75,7 @@ def recent_tasks(request):
     return response
 
 
-@login_required
+@staff_member_required
 def results(requests, key):
 
     # {u'task': u'apps.brand.tasks.update_youtube_member_channels_nightly',
