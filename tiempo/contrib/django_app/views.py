@@ -21,7 +21,7 @@ local = pytz.timezone("America/New_York")
 
 def dashboard(request):
 
-    threads = tiemposettings.THREAD_CONFIG
+    threads = tiemposettings.THREAD_CONFIG or tiemposettings.THREAD_DASHBOARD_CONFIG
 
     queue_length = [
         {
