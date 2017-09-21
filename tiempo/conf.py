@@ -16,6 +16,7 @@ import json
 if has_django:
     INTERVAL = getattr(settings, 'TIEMPO_INTERVAL', 5)
     THREAD_CONFIG = getattr(settings, 'TIEMPO_THREAD_CONFIG', [('1','2','3'),('1','2'),('1',)])
+    THREAD_DASHBOARD_CONFIG = getattr(settings, 'TIEMPO_DASHBOARD_CONFIG', [('1','2','3'),('1','2'),('1',)])
     RESULT_LIFESPAN = getattr(settings, 'TIEMPO_RESULT_LIFESPAN_DAYS', 1)
     DEBUG = settings.DEBUG
 
